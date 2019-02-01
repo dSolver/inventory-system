@@ -16,9 +16,12 @@ export interface Item extends Entity {
 }
 
 /** ex. {
- *  apple: [apple_1, apple_2],
- *  coins: [coin1]
- * } */
+ *  apple: ['apple_1', 'apple_2'],
+ *  coinstack: ['coinstack_3']
+ * } 
+ * 
+ * Items are mapped entityId to string array of instance Ids
+ * */
 export interface ItemMap {
   [entityId: string]: string[];
 }
@@ -163,6 +166,9 @@ export const Entities = {
       return container.contents[entityId];
     },
     listInstances: (container: Container, entityId: string): string[] => {
+      if (!container.contents[entityId]) {
+        return [];
+      }
       return Object.keys(container.contents[entityId].instances);
     },
     countInstances: (container: Container, entityId: string): number => {
@@ -174,13 +180,17 @@ export const Entities = {
     },
     getFirstStack: (state: State, container: Container, entityId: string): Stack => {
       let stack: Stack;
-      // add it to the stack in the container
       const stacks = Entities.Container.listInstances(container, entityId);
       if (stacks.length === 0) {
         // create a new stack
         stack = Entities.Stack.create(state, entityId);
         // it's ok to directly add an empty stack because it doesn't take up any limits
-        Entities.Container.deposit(state, container, Util.Item.creatItemMapFromInstances([stack]));
+        container.contents[entityId] = {
+          entityId,
+          instances: {}
+        };
+        container.contents[entityId].instances[stack.id] = true;
+
       } else {
         stack = <Stack>Util.State.getInstance(state, entityId, stacks[0]);
       }
@@ -189,21 +199,21 @@ export const Entities = {
     /** Depositing an array of items **/
     deposit: (state: State, container: Container, things: ItemMap) => {
       Object.keys(things).forEach((entityId: string) => {
-        const store: EntityStore = Util.State.getStore(state, entityId);
-
-        if (!Entities.Container.getContentRecord(container, entityId)) {
+        let record: ContainerContentRecord = Entities.Container.getContentRecord(container, entityId);
+        if (!record) {
           container.contents[entityId] = {
             entityId,
             instances: {}
           };
+          record = container.contents[entityId];
         }
-        const record = Entities.Container.getContentRecord(container, entityId);
-
-        const instances: Item[] = things[entityId].map((instId: string) => {
-          return <Item>store.instances[instId];
+        const instanceIds = things[entityId];
+        const instances: Item[] = instanceIds.map((instId: string) => {
+          return <Item>Util.State.getInstance(state, entityId, instId);
         });
 
         instances.forEach((item: Item) => {
+          item.containerId = container.id;
           if (item.stackable) {
             const stack = Entities.Container.getFirstStack(state, container, entityId);
             // merged
@@ -251,13 +261,13 @@ export const Entities = {
             return;
           }
           const inst: Item = <Item>Util.State.getInstance(state, entityId, instId);
+          delete inst.containerId;
           if (inst.stackable) {
             const stack = Entities.Container.getFirstStack(state, container, entityId);
             Entities.Stack.merge(stack, <Stack>inst, -1);
             if (inst.containerId) {
               Entities.Container.updateLimitsUsed(state, <Container>Util.State.getInstance(state, 'container', inst.containerId))
             }
-
           } else {
             delete record.instances[instId];
           }
@@ -292,12 +302,12 @@ export const Entities = {
 
       });
     },
-    /** Returns whether or not the things we want to deposit will fit into the container */
+    /** Returns whether or not the things we want to deposit will fit into the container's various limits */
     canDeposit: (state: State, container: Container, things: ItemMap): boolean => {
       const thingsDim: Dimensions = Util.Item.getDimensions(state, things);
       return Object.keys(thingsDim).every((f: string) => {
         const v = thingsDim[f];
-        return !container.limits || container.limits[f].max >= container.limits[f].used + v;
+        return container.limits[f].max >= container.limits[f].used + v;
       });
     },
     /** Returns the limits of a container is used, optionally by entityId */
@@ -332,7 +342,7 @@ export const Entities = {
       };
 
       Object.keys(container.contents).forEach((entityId: string) => {
-        const record = Entities.Container.getContentRecord(container, entityId);
+        const record: ContainerContentRecord = Entities.Container.getContentRecord(container, entityId);
         Object.keys(record.instances).forEach((instId) => {
           const inst = <Item>Util.State.getInstance(state, entityId, instId);
           Util.Item.mergeDims(used, inst.dimensions);
@@ -393,7 +403,7 @@ export const Entities = {
         unitDim: {
           slots: 0,
           space: 0.05,
-          weight: 0.2
+          weight: 0.1
         }
       };
 
@@ -404,23 +414,13 @@ export const Entities = {
   },
   Stack: {
     create: (state: State, entityId: string): Stack => {
-      const stack: Stack = {
-        ...Entities.create(state, entityId),
-        stackable: true,
-        tags: {},
-        itemId: entityId,
-        units: 0,
-        unitDim: {
-          slots: 0,
-          space: 0,
-          weight: 0
-        },
-        dimensions: {
-          slots: 0,
-          space: 0,
-          weight: 0
-        }
+      let stack: Stack;
+      switch (entityId) {
+        case 'coinstack':
+          stack = Entities.Coin.create(state, 0);
+          break;
       }
+
       Util.State.addEntity(state, stack);
       return stack;
     },
@@ -431,7 +431,7 @@ export const Entities = {
       });
       return stack;
     },
-    // Merges s2 into stack, then delete s2, returns stack
+    // Merges s2 into stack, then empty s2, returns stack
     merge: (stack: Stack, s2: Stack, modifier?: number): Stack => {
       if (stack.entityId !== s2.entityId) {
         return null;

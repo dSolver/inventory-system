@@ -1,10 +1,14 @@
 import { expect } from 'chai';
 import 'mocha';
 
-import { Entities, State, Container, Apple, ItemMap, Util } from './game';
+import { Entities, State, Container, Apple, ItemMap, Util, CoinStack } from './game';
 // testing
 let state: State;
 let container: Container;
+let bag: Container;
+let coins: CoinStack;
+let toDeposit: ItemMap;
+
 describe('Create State', () => {
     it('should create a state object', () => {
         const _state = Util.State.create();
@@ -54,3 +58,38 @@ describe('Apples', () => {
     });
 });
 
+describe('Create Bag', () => {
+    it('should create a bag with infinite slots but limited weight and space', () => {
+
+        coins = Entities.Coin.create(state, 300);
+        toDeposit = Util.Item.creatItemMapFromInstances([coins]);
+        
+        bag = Entities.Container.create(state, { slots: Infinity, weight: 30, space: 100 });
+        expect(bag.limits.slots.max).to.equal(Infinity);
+        expect(bag.limits.weight.max).to.equal(30);
+    });
+
+
+    it('should fit 300 coins', () => {
+
+        expect(coins.dimensions.weight, 'Coinstack weight should be 30x coin weight').to.equal(coins.unitDim.weight * 300);
+        expect(Entities.Container.canDeposit(state, bag, toDeposit), 'bag couldnt hold it?').to.be.true;
+
+
+    });
+    it('should deposit 300 coins', () => {
+        Entities.Container.deposit(state, bag, toDeposit);
+        expect(Entities.Container.getFirstStack(state, bag, 'coinstack').dimensions.weight).equal(30);
+        expect(Entities.Container.getFirstStack(state, bag, 'coinstack').units, 'Stack in container not same units as coins stack?').equal(300);
+        expect(bag.limits.weight.used).to.equal(bag.limits.weight.max);
+        expect(coins.dimensions.weight).equal(0);
+        expect(coins.units).equal(0);
+    });
+    it('should not fit 301st coin', () => {
+        const coin: CoinStack = Entities.Coin.create(state, 1);
+        const toDeposit2 = Util.Item.creatItemMapFromInstances([coin]);
+
+        expect(Entities.Container.canDeposit(state, bag, toDeposit2)).to.be.false;
+    });
+
+})
