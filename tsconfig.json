@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "declaration": false,
+    "experimentalDecorators": true,
+    "forceConsistentCasingInFileNames": true,
+    "lib": ["es7", "dom"],
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "noImplicitReturns": true,
+    "noImplicitThis": true,
+    "noImplicitAny": true,
+    "noUnusedLocals": true,
+    "outDir": "./dist",
+    "sourceMap": true,
+    "strictNullChecks": false,
+    "suppressImplicitAnyIndexErrors": true,
+    "target": "es5"
+  },
+  "exclude": [
+    "node_modules",
+    "static"
+  ]
+}
