@@ -387,7 +387,9 @@ export const Entities = {
       return apple;
     }
   },
-  Coin: {
+  Coinstack: {
+    entityId: 'coinstack',
+    stackable: true,
     create: (state: State, units: number): CoinStack => {
       const coinstack: CoinStack = {
         ...Entities.create(state, 'coinstack'),
@@ -413,16 +415,20 @@ export const Entities = {
     }
   },
   Stack: {
+    /** Creates a stack of entityId, returns null if the entityId does not exist in Entities or is not stackable */
     create: (state: State, entityId: string): Stack => {
       let stack: Stack;
-      switch (entityId) {
-        case 'coinstack':
-          stack = Entities.Coin.create(state, 0);
-          break;
+      const entityClass = Object.keys(Entities).find((c) => {
+        const v = Entities[c];
+        return (typeof (v) === 'object' && v['entityId']
+          && v['entityId'] === entityId && v['entityId'].stackable);
+      });
+      if (entityClass) {
+        stack = entityClass['create'](state, 0);
+        Util.State.addEntity(state, stack);
+        return stack;
       }
-
-      Util.State.addEntity(state, stack);
-      return stack;
+      return null;
     },
     addUnits: (stack: Stack, units: number): Stack => {
       stack.units += units;

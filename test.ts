@@ -57,15 +57,15 @@ describe('Apples', () => {
         const things: ItemMap = Util.Item.creatItemMapFromInstances([Entities.Apple.create(state)])
         expect(Entities.Container.canDeposit(state, container, things)).to.be.false;
     });
-    it('should pick 50 apples with the highest spoilage', ()=> {
-        mostSpoiled = Entities.Container.pick(state, container, 'apple', 50, (a: Apple, b: Apple)=> {
+    it('should pick 50 apples with the highest spoilage', () => {
+        mostSpoiled = Entities.Container.pick(state, container, 'apple', 50, (a: Apple, b: Apple) => {
             return b.spoilage - a.spoilage
         });
 
         expect(mostSpoiled.length).equals(50);
     });
-    it('should withdraw the 50 apples', ()=> {
-        const toWithdraw: ItemMap = {'apple': mostSpoiled.slice()};
+    it('should withdraw the 50 apples', () => {
+        const toWithdraw: ItemMap = { 'apple': mostSpoiled.slice() };
         expect(Entities.Container.canWithdraw(state, container, toWithdraw)).to.be.true;
         Entities.Container.withdraw(state, container, toWithdraw); // make the withdraw;
         expect(container.limits.weight.used).equals(50);
@@ -77,9 +77,9 @@ describe('Apples', () => {
 describe('Create Bag', () => {
     it('should create a bag with infinite slots but limited weight and space', () => {
 
-        coins = Entities.Coin.create(state, 300);
+        coins = Entities.Coinstack.create(state, 300);
         toDeposit = Util.Item.creatItemMapFromInstances([coins]);
-        
+
         bag = Entities.Container.create(state, { slots: Infinity, weight: 30, space: 100 });
         expect(bag.limits.slots.max).to.equal(Infinity);
         expect(bag.limits.weight.max).to.equal(30);
@@ -102,7 +102,7 @@ describe('Create Bag', () => {
         expect(coins.units).equal(0);
     });
     it('should not fit 301st coin', () => {
-        const coin: CoinStack = Entities.Coin.create(state, 1);
+        const coin: CoinStack = Entities.Coinstack.create(state, 1);
         const toDeposit2 = Util.Item.creatItemMapFromInstances([coin]);
 
         expect(Entities.Container.canDeposit(state, bag, toDeposit2)).to.be.false;
