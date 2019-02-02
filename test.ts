@@ -8,6 +8,7 @@ let container: Container;
 let bag: Container;
 let coins: CoinStack;
 let toDeposit: ItemMap;
+let mostSpoiled: string[];
 
 describe('Create State', () => {
     it('should create a state object', () => {
@@ -55,6 +56,21 @@ describe('Apples', () => {
     it('should not add the 101st apple to the container', () => {
         const things: ItemMap = Util.Item.creatItemMapFromInstances([Entities.Apple.create(state)])
         expect(Entities.Container.canDeposit(state, container, things)).to.be.false;
+    });
+    it('should pick 50 apples with the highest spoilage', ()=> {
+        mostSpoiled = Entities.Container.pick(state, container, 'apple', 50, (a: Apple, b: Apple)=> {
+            return b.spoilage - a.spoilage
+        });
+
+        expect(mostSpoiled.length).equals(50);
+    });
+    it('should withdraw the 50 apples', ()=> {
+        const toWithdraw: ItemMap = {'apple': mostSpoiled.slice()};
+        expect(Entities.Container.canWithdraw(state, container, toWithdraw)).to.be.true;
+        Entities.Container.withdraw(state, container, toWithdraw); // make the withdraw;
+        expect(container.limits.weight.used).equals(50);
+        expect(container.limits.slots.used).equals(50);
+
     });
 });
 
